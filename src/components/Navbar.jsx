@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Menu, X, Leaf } from 'lucide-react';
 
-// FIX 3: Accept onNavigate prop
 const Navbar = ({ onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -15,12 +14,11 @@ const Navbar = ({ onNavigate }) => {
             className="flex-shrink-0 flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
           >
             <Leaf className="h-6 w-6 text-green-400" />
-            <span className="text-white font-bold text-xl tracking-tight">TeaSphere</span>
+            <span className="text-white font-bold text-xl tracking-tight">FoliumAI</span>
           </div>
 
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-8">
-              {/* Home Button triggers navigation */}
               <button onClick={() => onNavigate('home')} className="text-gray-300 hover:text-white hover:bg-white/10 px-3 py-2 rounded-md text-sm font-medium transition-all duration-300">
                 Home
               </button>
@@ -30,9 +28,6 @@ const Navbar = ({ onNavigate }) => {
                   {item}
                 </a>
               ))}
-              <a href="#login" className="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-green-500/30">
-                Login
-              </a>
             </div>
           </div>
 
@@ -50,7 +45,7 @@ const Navbar = ({ onNavigate }) => {
              <button onClick={() => { onNavigate('home'); setIsOpen(false); }} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium w-full text-left">
                 Home
               </button>
-            {['About', 'Contact', 'Login'].map((item) => (
+            {['About', 'Contact'].map((item) => (
               <a key={item} href={`#${item.toLowerCase()}`} className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">
                 {item}
               </a>
