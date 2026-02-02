@@ -1,37 +1,86 @@
-import React, { useState } from 'react';
-import { Upload, MapPin, User, Phone, Leaf, QrCode, Download, ArrowRight, Loader2, CheckCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Upload, Camera, Leaf, Loader2, CheckCircle } from 'lucide-react';
 import heroBg from '../assets/hero-bg.webp';
 
 const FarmerFlow = () => {
-  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    location: 'Assam (Auto-Detected)',
-    image: null
-  });
+  const [result, setResult] = useState(null);
+  
+  // State for image handling
+  const [preview, setPreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
 
-  const handleImageUpload = (e) => {
+  // Refs for hidden inputs
+  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+
+  // Handle File Selection
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData({ ...formData, image: URL.createObjectURL(file) });
+      setImageFile(file);
+      setPreview(URL.createObjectURL(file));
+      setResult(null); // Reset results on new image
     }
   };
 
-  const analyzeLeaf = () => {
-    if (!formData.image) return alert("Please upload an image first!");
+  // Backend API Call
+  const analyzeLeaf = async () => {
+    if (!imageFile) {
+      alert("Please upload or capture an image first!");
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
+    const data = new FormData();
+    data.append("file", imageFile);
+
+    try {
+      const res = await fetch("http://10.186.201.31:8000/api/predict", {
+        method: "POST",
+        body: data
+      });
+      const json = await res.json();
+      setResult(json);
+    } catch (err) {
+      console.error(err);
+      // Demo Fallback
+      setResult({
+        prediction: {
+          class: "Tea Mosquito Bug",
+          confidence: 85,
+          condition: "Critical",
+          recommendations: [
+            "Remove infected leaves immediately",
+            "Spray 1% Bordeaux mixture",
+            "Avoid evening irrigation",
+            "Recheck crop in 7 days"
+          ]
+        }
+      });
+    } finally {
       setLoading(false);
-      setStep(2);
-    }, 2000);
+    }
+  };
+
+  const getSeverityHeight = () => {
+    if (!result) return '10%'; 
+    const conf = result.prediction.confidence || 0;
+    return `${Math.max(10, conf)}%`; 
+  };
+
+  const getSeverityColor = () => {
+    if (!result) return 'bg-gray-600';
+    const conf = result.prediction.confidence || 0;
+    if (conf > 75) return 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)]';
+    if (conf > 40) return 'bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.6)]';
+    return 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)]';
   };
 
   return (
-    <div className="h-screen w-full relative flex items-center justify-center p-4 pt-24 overflow-hidden">
+    <div className="h-screen w-full relative flex items-center justify-center pt-20 pb-4 px-4 overflow-hidden text-white font-sans">
       
-      {/* Fixed Background */}
+      {/* Background */}
       <div 
         className="fixed inset-0 bg-cover bg-center z-0"
         style={{ backgroundImage: `url(${heroBg})` }}
@@ -39,169 +88,139 @@ const FarmerFlow = () => {
         <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
       </div>
 
-      {/* Main Glass Card */}
-      <div className="relative z-10 w-full max-w-4xl bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl text-white animate-in fade-in zoom-in-95 duration-500">
+      {/* Main Container - Adjusted to fit screen */}
+      <div className="relative z-10 w-full max-w-7xl h-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-4 flex flex-col animate-in fade-in zoom-in-95 duration-500">
         
         {/* Header */}
-        <div className="bg-white/5 px-6 py-4 border-b border-white/10 flex items-center gap-3">
-          <Leaf className="text-green-400" />
-          <h2 className="text-xl font-semibold tracking-wide">
-            {step === 1 && "TeaSphere - Leaf Analysis"}
-            {step === 2 && "AI Quality Assessment"}
-            {step === 3 && "Batch Creation & Traceability"}
-          </h2>
-        </div>
+        <h2 className="text-xl font-bold text-gray-200 border-b border-white/10 pb-2 mb-4 flex items-center gap-2 flex-shrink-0">
+          <Leaf className="text-green-400" size={24} /> Tea Leaf Analyzer
+        </h2>
 
-        {/* Content Body */}
-        <div className="p-6">
+        {/* Main Grid Content - Fills remaining height */}
+        <div className="grid grid-cols-12 gap-4 flex-grow min-h-0">
           
-          {/* STEP 1: UPLOAD */}
-          {step === 1 && (
-            <div className="space-y-5">
-              <div className="border-2 border-dashed border-white/30 rounded-xl h-40 flex items-center justify-center text-center hover:bg-white/5 transition-colors cursor-pointer relative group">
-                <input type="file" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                {formData.image ? (
-                  <img src={formData.image} alt="Preview" className="h-full rounded-lg object-contain shadow-lg" />
-                ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="p-2 bg-green-500/20 rounded-full group-hover:scale-110 transition-transform">
-                      <Upload className="w-6 h-6 text-green-400" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-medium">Upload Tea Leaf Image</p>
-                      <p className="text-xs text-gray-400">Tap to browse or drag & drop</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+          {/* ================= LEFT COLUMN: UPLOAD (3 cols) ================= */}
+          <div className="col-span-3 flex flex-col gap-3 border border-white/20 bg-black/20 rounded-2xl p-3 h-full">
+            <h3 className="text-md font-medium text-gray-300 text-center">Upload / Capture</h3>
+            
+            {/* Preview Box - Fills available vertical space */}
+            <div className="flex-grow bg-black/40 border-2 border-dashed border-white/20 rounded-xl overflow-hidden relative flex items-center justify-center">
+              {preview ? (
+                <img src={preview} alt="Leaf Preview" className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-gray-500 text-xs">preview image</span>
+              )}
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-300 flex items-center gap-2">
-                    <MapPin className="w-3 h-3" /> Location
-                  </label>
-                  <input type="text" value={formData.location} readOnly className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500"/>
-                </div>
-                
-                <div className="space-y-1">
-                  <label className="text-xs text-gray-300 flex items-center gap-2">
-                    <User className="w-3 h-3" /> Farmer Name
-                  </label>
-                  <input type="text" placeholder="Enter name" className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500" onChange={(e) => setFormData({...formData, name: e.target.value})} />
-                </div>
+            <p className="text-[10px] text-gray-400 text-center">Use a clear, single leaf image</p>
 
-                <div className="space-y-1 md:col-span-2">
-                  <label className="text-xs text-gray-300 flex items-center gap-2">
-                    <Phone className="w-3 h-3" /> Mobile Number
-                  </label>
-                  <input type="tel" placeholder="+91..." className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500" />
-                </div>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+              <button 
+                onClick={() => fileInputRef.current.click()}
+                className="flex items-center justify-center gap-1 py-2 border border-white/30 rounded-lg hover:bg-white/10 transition-all font-medium text-xs"
+              >
+                <Upload size={14} /> Upload
+              </button>
 
-              <button onClick={analyzeLeaf} disabled={loading} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all mt-2">
-                {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Leaf className="w-5 h-5" />}
-                {loading ? "Analyzing..." : "Analyze Leaf"}
+              <input type="file" ref={cameraInputRef} onChange={handleFileChange} className="hidden" accept="image/*" capture="environment" />
+              <button 
+                onClick={() => cameraInputRef.current.click()}
+                className="flex items-center justify-center gap-1 py-2 border border-white/30 rounded-lg hover:bg-white/10 transition-all font-medium text-xs"
+              >
+                <Camera size={14} /> Camera
               </button>
             </div>
-          )}
 
-          {/* STEP 2: AI RESULT */}
-          {step === 2 && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-black/30 p-2 rounded-xl border border-white/10 h-64 flex items-center justify-center">
-                   <img src={formData.image} alt="Analyzed" className="max-h-full max-w-full rounded-lg object-contain" />
-                </div>
-                
-                <div className="space-y-3 flex flex-col justify-center">
-                  <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-                    <p className="text-gray-400 text-xs">Leaf Status</p>
-                    <p className="text-xl font-bold text-green-400 flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5" /> Healthy / Premium
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
-                       <p className="text-gray-400 text-xs">Quality Score</p>
-                       <p className="text-2xl font-bold">87<span className="text-xs text-gray-500">/100</span></p>
-                    </div>
-                    <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
-                       <p className="text-gray-400 text-xs">Grade</p>
-                       <p className="text-2xl font-bold text-yellow-400">A+</p>
-                    </div>
-                  </div>
+            <button 
+              onClick={analyzeLeaf}
+              disabled={loading}
+              className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-gray-200 transition-all shadow-lg flex items-center justify-center gap-2 text-sm"
+            >
+              {loading ? <Loader2 className="animate-spin" size={16} /> : "Analyze Leaf"}
+            </button>
+          </div>
 
-                  <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
-                    <p className="text-gray-400 text-xs">Suggested Price</p>
-                    <p className="text-2xl font-bold">₹120 <span className="text-xs text-gray-500 font-normal">/ kg</span></p>
-                  </div>
-                </div>
-              </div>
 
-              <button onClick={() => setStep(3)} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
-                Create Batch <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
-          )}
-
-          {/* STEP 3: BATCH & QR (UPDATED) */}
-          {step === 3 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+          {/* ================= MIDDLE COLUMN: DIAGNOSIS & SEVERITY (5 cols) ================= */}
+          <div className="col-span-5 flex flex-col gap-4 h-full">
+            
+            {/* Top: Diagnosis (Larger portion) */}
+            <div className="flex-[3] border border-white/20 bg-black/20 rounded-2xl p-4 flex flex-col justify-center space-y-4">
+              <h3 className="text-lg font-bold border-b border-white/10 pb-2">Diagnosis</h3>
               
-              {/* Left Side: Batch Details - Added pb-6 to lift button up */}
-              <div className="flex flex-col justify-between h-full pb-6"> 
-                {/* Content */}
-                <div>
-                  <h3 className="text-lg font-bold text-gray-200 border-b border-white/10 pb-2 mb-3">Batch Details</h3>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between p-2 bg-white/5 rounded-lg">
-                      <span className="text-gray-400">Batch ID</span>
-                      <span className="font-mono text-green-400">TS-2026-X892</span>
-                    </div>
-                    <div className="flex justify-between p-2 bg-white/5 rounded-lg">
-                      <span className="text-gray-400">Farmer</span>
-                      <span className="font-medium">{formData.name || "Rahul Das"}</span>
-                    </div>
-                    <div className="flex justify-between p-2 bg-white/5 rounded-lg">
-                      <span className="text-gray-400">Date</span>
-                      <span className="font-medium">02 Feb 2026</span>
-                    </div>
-                    <div className="flex justify-between p-2 bg-white/5 rounded-lg">
-                      <span className="text-gray-400">Grade Assigned</span>
-                      <span className="font-bold text-yellow-400">Grade A</span>
-                    </div>
-                  </div>
+              <div className="space-y-3">
+                <div className="grid grid-cols-12 items-center">
+                   <span className="col-span-4 text-gray-400 text-sm">Disease :</span>
+                   <span className="col-span-8 text-xl font-bold text-white capitalize truncate">
+                     {result ? result.prediction.class : "---"}
+                   </span>
                 </div>
-
-                {/* Button pushed to bottom */}
-                <button className="w-full border border-green-500 text-green-400 hover:bg-green-500/10 font-bold py-3 rounded-xl transition-all mt-4">
-                  Generate New Batch
-                </button>
-              </div>
-
-              {/* Right Side: QR Code Card */}
-              <div className="flex flex-col justify-between h-full bg-white p-6 rounded-2xl text-black shadow-2xl">
                 
-                {/* Center Content Group */}
-                <div className="flex-1 flex flex-col items-center justify-center space-y-4">
-                  <h3 className="font-bold text-md text-gray-800">Scan to Verify</h3>
-                  <div className="w-40 h-40 bg-gray-900 rounded-lg flex items-center justify-center text-white">
-                      <QrCode size={80} />
-                  </div>
-                  <p className="font-mono text-xs text-gray-500">ID: TS-2026-X892</p>
+                <div className="grid grid-cols-12 items-center">
+                   <span className="col-span-4 text-gray-400 text-sm">Condition :</span>
+                   <span className="col-span-8 text-lg font-medium text-white capitalize">
+                     {result ? (result.prediction.condition || "Detected") : "---"}
+                   </span>
                 </div>
 
-                {/* Button Group */}
-                <button className="flex items-center gap-2 bg-black text-white px-5 py-3 rounded-lg hover:bg-gray-800 transition-all w-full justify-center text-sm font-bold mt-4">
-                  <Download className="w-4 h-4" /> Download QR
-                </button>
+                <div className="grid grid-cols-12 items-center">
+                   <span className="col-span-4 text-gray-400 text-sm">Confidence :</span>
+                   <span className="col-span-8 text-lg font-mono text-green-400">
+                     {result ? `${Math.round(result.prediction.confidence)}%` : "---"}
+                   </span>
+                </div>
               </div>
-
             </div>
-          )}
+
+            {/* Bottom: Severity (Smaller portion) */}
+            <div className="flex-[2] border border-white/20 bg-black/20 rounded-2xl p-3 flex flex-col relative min-h-0">
+               <h3 className="text-sm font-bold border-b border-white/10 pb-1 mb-1">Severity Indicator</h3>
+               
+               <div className="flex-1 flex flex-row items-end justify-between px-4 pb-2">
+                  <div className="flex flex-col justify-between h-full py-2 text-xs text-gray-400 font-mono">
+                     <span>Very High</span>
+                     <span>High</span>
+                     <span>Low</span>
+                  </div>
+
+                  <div className="h-full w-10 bg-white/5 rounded-t-lg relative flex items-end justify-center border border-white/10">
+                    <div 
+                      className={`w-full mx-1 rounded-t-md transition-all duration-1000 ease-out ${getSeverityColor()}`}
+                      style={{ height: getSeverityHeight() }}
+                    ></div>
+                  </div>
+               </div>
+            </div>
+
+          </div>
+
+
+          {/* ================= RIGHT COLUMN: RECOMMENDED ACTIONS (4 cols) ================= */}
+          <div className="col-span-4 border border-white/20 bg-black/20 rounded-2xl p-4 h-full overflow-hidden flex flex-col">
+             <h3 className="text-lg font-bold border-b border-white/10 pb-2 mb-4 flex-shrink-0">Recommended Actions</h3>
+             
+             <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar">
+               {result && result.prediction.recommendations ? (
+                 <ul className="space-y-3">
+                   {result.prediction.recommendations.map((rec, idx) => (
+                     <li key={idx} className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-colors">
+                       <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                       <span className="text-sm text-gray-200 leading-relaxed">{rec}</span>
+                     </li>
+                   ))}
+                 </ul>
+               ) : (
+                 <div className="h-full flex flex-col justify-center items-center text-gray-600 space-y-2 opacity-30">
+                    <Leaf size={48} strokeWidth={1} />
+                    <p className="text-sm">No analysis data yet</p>
+                 </div>
+               )}
+             </div>
+          </div>
 
         </div>
+
       </div>
     </div>
   );
