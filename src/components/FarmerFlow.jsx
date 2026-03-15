@@ -57,17 +57,28 @@ const FarmerFlow = () => {
     data.append("file", imageFile);
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL;
+      // 1. Fallback added to prevent crashes if Vercel env vars are missing
+      const API_URL = import.meta.env.VITE_API_URL || "teasphere-backend-production.up.railway.app";
       
-      // FIX: Ensure protocol is present and append the correct /api/predict endpoint
       const baseUrl = API_URL.startsWith('http') ? API_URL : `https://${API_URL}`;
       const endpoint = `${baseUrl.replace(/\/$/, '')}/api/predict`;
 
+      console.log("Sending request to:", endpoint); // Debugging log
+
       const res = await fetch(endpoint, {
         method: "POST",
-        body: data
+        body: data,
+        // Explicitly accepting JSON helps with some strict backend configurations
+        headers: {
+          'Accept': 'application/json',
+        }
       });
       
+      // 2. Catch actual HTTP errors (like 404, 500) before parsing JSON
+      if (!res.ok) {
+        throw new Error(`Backend returned status ${res.status}: ${res.statusText}`);
+      }
+
       const json = await res.json();
       setResult(json);
 
@@ -85,9 +96,9 @@ const FarmerFlow = () => {
       }
 
     } catch (err) {
-      console.error(err);
-      alert("Failed to fetch data. Please check connection.");
-      // REMOVED HARDCODED FALLBACK
+      // 3. More detailed error logging to help you debug CORS/Network issues
+      console.error("Fetch Analysis Error:", err);
+      alert("Failed to fetch data. Please check connection. (See console for details)");
     } finally {
       setLoading(false);
     }
@@ -192,7 +203,6 @@ const FarmerFlow = () => {
                 <div className="grid grid-cols-12 items-center">
                    <span className="col-span-4 text-gray-400 text-sm">Condition :</span>
                    <span className="col-span-8 text-lg md:text-lg font-medium text-white capitalize">
-                     {/* FIX: Corrected path -> result.analysis.ai.severity */}
                      {isHealthy() ? "Good" : (result?.analysis?.ai?.severity || "---")}
                    </span>
                 </div>
@@ -220,7 +230,6 @@ const FarmerFlow = () => {
                      <span>Low</span>
                   </div>
 
-                  {/* FIX: Mobile now has fixed height (h-40) to prevent collapse. Desktop is h-full. */}
                   <div className="h-40 md:h-full w-16 md:w-10 bg-white/5 rounded-t-lg relative flex items-end justify-center border border-white/10">
                     <div 
                       className={`w-full mx-1 rounded-t-md transition-all duration-[1500ms] ease-out ${getSeverityColor()}`}
@@ -244,7 +253,6 @@ const FarmerFlow = () => {
                     <p className="text-sm">Plant is healthy! No action needed.</p>
                  </div>
                ) : (
-                 /* FIX: Corrected path -> result.analysis.ai.treatment */
                  result && result.analysis?.ai?.treatment ? (
                    <ul className="space-y-4 md:space-y-3">
                      {result.analysis.ai.treatment.map((rec, idx) => (
