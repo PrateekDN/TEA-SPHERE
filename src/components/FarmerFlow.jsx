@@ -57,7 +57,8 @@ const FarmerFlow = () => {
     data.append("file", imageFile);
 
     try {
-      const res = await fetch("http://10.170.144.31:8000/api/predict", {
+      const API_URL = import.meta.env.VITE_API_URL;
+      const res = await fetch(API_URL, {
         method: "POST",
         body: data
       });
@@ -79,34 +80,8 @@ const FarmerFlow = () => {
 
     } catch (err) {
       console.error(err);
-      // Fallback matching your LATEST JSON structure (ai inside analysis)
-      setResult({
-        analysis: {
-          disease: "Tea Mosquito Bug",
-          confidence: 85,
-          ai: {
-            severity: "Critical",
-            treatment: [
-              "Remove infected leaves immediately",
-              "Spray 1% Bordeaux mixture",
-              "Avoid evening irrigation",
-              "Recheck crop in 7 days"
-            ]
-          }
-        }
-      });
-      
-      if (window.innerWidth < 768) {
-        setTimeout(() => {
-          if (severityRef.current) {
-             severityRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 100);
-        setTimeout(() => {
-          setAnimateBar(true);
-        }, 600);
-      }
-
+      alert("Failed to fetch data. Please check connection.");
+      // REMOVED HARDCODED FALLBACK
     } finally {
       setLoading(false);
     }
@@ -211,7 +186,7 @@ const FarmerFlow = () => {
                 <div className="grid grid-cols-12 items-center">
                    <span className="col-span-4 text-gray-400 text-sm">Condition :</span>
                    <span className="col-span-8 text-lg md:text-lg font-medium text-white capitalize">
-                     {/* FIX: Correct path analysis.ai.severity */}
+                     {/* FIX: Corrected path -> result.analysis.ai.severity */}
                      {isHealthy() ? "Good" : (result?.analysis?.ai?.severity || "---")}
                    </span>
                 </div>
@@ -219,7 +194,7 @@ const FarmerFlow = () => {
                 <div className="grid grid-cols-12 items-center">
                    <span className="col-span-4 text-gray-400 text-sm">Confidence :</span>
                    <span className="col-span-8 text-lg font-mono text-green-400">
-                     {result ? `${Math.round(result.analysis.confidence)}%` : "---"}
+                     {result ? `${Math.round(result.analysis?.confidence)}%` : "---"}
                    </span>
                 </div>
               </div>
@@ -239,7 +214,8 @@ const FarmerFlow = () => {
                      <span>Low</span>
                   </div>
 
-                  <div className="h-full w-16 md:w-10 bg-white/5 rounded-t-lg relative flex items-end justify-center border border-white/10">
+                  {/* FIX: Mobile now has fixed height (h-40) to prevent collapse. Desktop is h-full. */}
+                  <div className="h-40 md:h-full w-16 md:w-10 bg-white/5 rounded-t-lg relative flex items-end justify-center border border-white/10">
                     <div 
                       className={`w-full mx-1 rounded-t-md transition-all duration-[1500ms] ease-out ${getSeverityColor()}`}
                       style={{ height: getSeverityHeight() }}
@@ -256,13 +232,13 @@ const FarmerFlow = () => {
              <h3 className="text-lg font-bold border-b border-white/10 pb-2 mb-4 flex-shrink-0">Recommended Actions</h3>
              
              <div className="flex-grow md:overflow-y-auto pr-1 custom-scrollbar">
-               {/* FIX: Correct path analysis.ai.treatment */}
                {result && isHealthy() ? (
                  <div className="h-full flex flex-col justify-center items-center text-green-400 space-y-2">
                     <CheckCircle size={48} strokeWidth={1} />
                     <p className="text-sm">Plant is healthy! No action needed.</p>
                  </div>
                ) : (
+                 /* FIX: Corrected path -> result.analysis.ai.treatment */
                  result && result.analysis?.ai?.treatment ? (
                    <ul className="space-y-4 md:space-y-3">
                      {result.analysis.ai.treatment.map((rec, idx) => (
